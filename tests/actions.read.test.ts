@@ -55,6 +55,29 @@ describe('artifact:getMany', () => {
 		expect((calls[1].body as Record<string, unknown>).cursor).toBe('c2');
 		expect((calls[0].body as Record<string, unknown>).limit).toBe(100);
 	});
+
+	it('never exceeds the 1,000-item cap even when every page has a next_cursor', async () => {
+		// A page size that does not divide the 1,000 cap evenly (300): the fourth page
+		// would carry the running total from 900 to 1200 if the whole page were pushed
+		// before checking the cap, so this also proves the cap is enforced mid-page, not
+		// just between pages.
+		const PAGE_SIZE = 300;
+		const page = (start: number) => ({
+			items: Array.from({ length: PAGE_SIZE }, (_, i) => hit(`id-${start + i}`)),
+			next_cursor: 'more',
+			mode: 'hybrid',
+		});
+		// Queued generously so the mock would keep serving pages past the cap if the
+		// implementation kept requesting them; the assertion below checks it doesn't.
+		const responses = Array.from({ length: 6 }, (_, i) => on('POST', '/v1/artifacts/search', { body: page(i * PAGE_SIZE) }));
+		const { ctx, calls } = mockExecute({
+			params: { project: { mode: 'id', value: 'p1' }, query: '', mode: 'hybrid', returnAll: true, filters: {} },
+			responses,
+		});
+		const out = await getMany({ ...a, ctx });
+		expect(out).toHaveLength(1000);
+		expect(calls.length).toBeLessThanOrEqual(10);
+	});
 });
 
 describe('artifact:update', () => {

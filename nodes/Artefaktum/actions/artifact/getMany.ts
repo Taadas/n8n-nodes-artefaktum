@@ -29,9 +29,10 @@ const getMany: Action = async ({ ctx, itemIndex, projectCache }) => {
 		for (const hit of (page.items as IDataObject[]) ?? []) {
 			out.push({ json: { ...(hit.artifact as IDataObject), score: hit.score, match_mode: hit.match_mode }, pairedItem: { item: itemIndex } });
 			if (!returnAll && out.length >= limit) return out;
+			if (returnAll && out.length >= RETURN_ALL_CAP) return out;
 		}
 		cursor = returnAll && typeof page.next_cursor === 'string' ? page.next_cursor : null;
-	} while (cursor && out.length < RETURN_ALL_CAP);
+	} while (cursor);
 	return out;
 };
 
