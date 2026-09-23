@@ -4,7 +4,7 @@
 	"codexVersion": "1.0",
 	"categories": ["Development", "Data & Storage"],
 	"resources": {
-		"credentialDocumentation": [{ "url": "https://github.com/Taadas/n8n-nodes-artefaktum#credentials" }],
-		"primaryDocumentation": [{ "url": "https://github.com/Taadas/n8n-nodes-artefaktum#readme" }]
+		"credentialDocumentation": [{ "url": "https://github.com/artefaktum-dev/n8n-nodes-artefaktum#credentials" }],
+		"primaryDocumentation": [{ "url": "https://github.com/artefaktum-dev/n8n-nodes-artefaktum#readme" }]
 	}
 }

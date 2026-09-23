@@ -12,7 +12,7 @@ export class ArtefaktumApi implements ICredentialType {
 
 	icon = { light: 'file:../nodes/Artefaktum/artefaktum.svg', dark: 'file:../nodes/Artefaktum/artefaktum.dark.svg' } as const;
 
-	documentationUrl = 'https://github.com/Taadas/n8n-nodes-artefaktum#credentials';
+	documentationUrl = 'https://github.com/artefaktum-dev/n8n-nodes-artefaktum#credentials';
 
 	properties: INodeProperties[] = [
 		{
