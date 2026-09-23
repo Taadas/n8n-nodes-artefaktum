@@ -1,35 +1,127 @@
 # n8n-nodes-artefaktum
 
 This is an n8n community node for [Artefaktum](https://artefaktum.dev), a
-service for storing, finding and reusing artifacts (files and their
-metadata) across n8n workflows and AI agents.
-
-**Work in progress.** This package is under active development; the
-sections below will be filled in as the node lands.
+service that stores artifacts — files plus the metadata needed to find them
+and judge whether they are still current — so workflows and AI agents can
+hand results to each other instead of recomputing them.
 
 [n8n](https://n8n.io/) is a [fair-code licensed](https://docs.n8n.io/sustainable-use-license/) workflow automation platform.
 
 ## Install
 
-Follow the [installation guide](https://docs.n8n.io/integrations/community-nodes/installation/) in the n8n community nodes documentation.
+**Self-hosted n8n**: run `npm install n8n-nodes-artefaktum` in your n8n
+custom nodes directory, or install it from n8n's UI under
+**Settings → Community Nodes**. See the
+[installation guide](https://docs.n8n.io/integrations/community-nodes/installation/)
+for details.
+
+**n8n Cloud**: the node will be installable directly from the Cloud node
+panel once it has passed n8n's community node verification.
 
 ## Credentials
 
-Coming soon.
+Mint an API key in the [Artefaktum console](https://artefaktum.dev/console/)
+and paste it into the node credential's **API Key** field. Choose the scopes
+the workflow actually needs: `read`, `write`, `search`, and `delete` — only
+grant `delete` if the workflow deletes artifacts.
+
+**Base URL** defaults to `https://api.artefaktum.dev` and only needs to
+change for a self-hosted Artefaktum instance.
 
 ## Operations
 
-Coming soon.
+### Artifact
 
-## Example workflow
+| Parameter | Applies to | Description |
+| --- | --- | --- |
+| Project | Upload, Get or Upload, Get Many, Get | The project the artifact belongs to. Every tenant has a project with slug `default`. |
+| External Key | Get or Upload | The key that identifies this result. If an artifact with this key exists and is fresh enough, it is returned instead of uploading. |
+| Max Age (Seconds) | Get or Upload | Reuse the stored artifact only if it is younger than this. `0` accepts any age. |
+| Input Data Source | Upload, Get or Upload | Upload the file held in a binary property of the input item, or text/JSON built with an expression. |
+| Input Binary Field | Upload, Get or Upload (binary source) | Name of the binary property that holds the file. |
+| Content | Upload, Get or Upload (text source) | The text to store, built with an expression if needed. |
+| File Name | Upload, Get or Upload | Stored file name. Defaults to the binary file name, or a generated name for text. |
+| Content Type | Upload, Get or Upload | MIME type. Defaults to the binary file type, or `text/plain` for text. |
+| Title | Upload, Get or Upload | What the artifact is. Searched by other agents. Defaults to the file name. |
+| Options → Description | Upload, Get or Upload | Longer description; searched semantically. |
+| Options → Expires In (Hours) | Upload, Get or Upload | Delete the artifact automatically after this many hours. `0` keeps it. |
+| Options → External Key | Upload | Your own unique key for this artifact within the project, e.g. a source URL or a hash. |
+| Options → Metadata (JSON) | Upload, Get or Upload | Structured metadata, searchable by filters. |
+| Options → Summary | Upload, Get or Upload | A short summary of the content for search; leave empty to let the server derive one for text files. |
+| Options → Tags | Upload, Get or Upload | Comma-separated tags. |
+| Lookup | Get | Find the artifact by ID or by External Key. |
+| Artifact ID | Download, Update, Delete, Get (Lookup = By ID) | The artifact ID, e.g. from a previous Artefaktum node in this workflow. |
+| External Key | Get (Lookup = By External Key) | The external key to look up. |
+| Project | Get | The project to resolve the external key against (used when Lookup = By External Key). |
+| Download Options → File Name | Download | Override the file name on the binary property. |
+| Download Options → Put Output File in Field | Download | Name of the binary property to write the file to. |
+| Download Options → Verify Checksum | Download | Whether to compare the downloaded bytes against the stored SHA-256. |
+| Download Options → Version ID | Download | A specific version; defaults to the latest. |
+| Query | Get Many | What you are looking for, in words. Leave empty to list by filters only. |
+| Search Mode | Get Many | Hybrid (keyword and meaning combined), Semantic (by meaning) or Text (by keywords). |
+| Return All | Get Many | Whether to return all results or only up to a given limit. |
+| Limit | Get Many | Max number of results to return. |
+| Filters → Content Types | Get Many | Comma-separated MIME types. |
+| Filters → Created After / Created Before | Get Many | Restrict results to a date range. |
+| Filters → Include Superseded | Get Many | Whether to include artifacts that a newer artifact supersedes. |
+| Filters → Tags (All Of) | Get Many | Comma-separated; every tag must match. |
+| Update Fields → Title, Description, Tags, Metadata (JSON) | Update | Replace the corresponding field. |
+| Update Fields → Expires At | Update | Set a new expiry. |
+| Update Fields → Clear Expiry | Update | Whether to remove the expiry so the artifact is kept. |
 
-Coming soon.
+Operations: **Upload**, **Get or Upload**, **Download**, **Get**,
+**Get Many**, **Update**, **Delete**.
+
+Upload returns the artifact with `status: "processing"` for a few seconds
+while Artefaktum finishes deriving search metadata; Get Many only finds it
+once its status is `ready`.
+
+### Project
+
+| Parameter | Applies to | Description |
+| --- | --- | --- |
+| — | Get Many | Lists the projects of your tenant. No parameters beyond Resource/Operation. |
+
+## Get or Upload (caching)
+
+Use **Get or Upload** to cache the result of an expensive call — an API
+request, a report generation, an LLM completion — behind a key you choose.
+Give it an **External Key** that identifies the result (for example
+`weather:vilnius:2026-09-23`) and a **Max Age (Seconds)**. On each run:
+
+- if an artifact with that key exists and is younger than the max age, it is
+  returned as-is (`cache: "hit"` in the output) and the upstream call is
+  skipped entirely by putting the expensive step *after* a check, or by
+  feeding its result into Get or Upload every time and letting Artefaktum
+  decide whether to keep the new upload or hand back the cached one
+  (`cache: "created"` when it stores what you sent);
+- if not, the content you provide is uploaded and stored under that key for
+  next time.
+
+See [`examples/cache-api-response.json`](examples/cache-api-response.json)
+for a complete workflow: Manual Trigger → HTTP Request (a weather API) →
+Artefaktum (Get or Upload), caching the response for an hour under a
+per-day key.
+
+## Limits
+
+Artefaktum enforces per-plan quotas — storage, request rate and artifact
+count — see [pricing](https://artefaktum.dev/pricing/) for the current
+limits, plus a per-file size limit. When a quota is exceeded the API returns
+`quota_exceeded` as the error text.
 
 ## Development
 
 ```bash
-npm run dev      # run the node in n8n's dev environment
+npm install      # install dependencies
+npm run dev       # run the node in n8n's dev environment
+npm test          # run the test suite
 npm run lint      # lint the package
 npm run build     # build the package to dist/
-npm test          # run the test suite
 ```
+
+Releases are cut by pushing a version tag; see `npm run release`.
+
+## License
+
+[MIT](LICENSE)

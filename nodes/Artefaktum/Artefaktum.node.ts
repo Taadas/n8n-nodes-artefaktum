@@ -1,5 +1,30 @@
-import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	INodeExecutionData,
+	INodeListSearchResult,
+	INodeType,
+	INodeTypeDescription,
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import del from './actions/artifact/del';
+import download from './actions/artifact/download';
+import get from './actions/artifact/get';
+import getMany from './actions/artifact/getMany';
+import getOrUpload from './actions/artifact/getOrUpload';
+import update from './actions/artifact/update';
+import upload from './actions/artifact/upload';
+import type { Action } from './actions/common';
+import projectGetMany from './actions/project/getMany';
+import { artifactFields, artifactOperations } from './descriptions/artifact';
+import { projectFields, projectOperations } from './descriptions/project';
+import { searchProjects } from './projects';
+
+const ACTIONS: Record<string, Record<string, Action>> = {
+	artifact: { upload, getOrUpload, download, get, getMany, update, delete: del },
+	project: { getMany: projectGetMany },
+};
 
 export class Artefaktum implements INodeType {
 	description: INodeTypeDescription = {
@@ -8,13 +33,62 @@ export class Artefaktum implements INodeType {
 		icon: { light: 'file:artefaktum.svg', dark: 'file:artefaktum.dark.svg' },
 		group: ['transform'],
 		version: 1,
-		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Store, find and reuse artifacts',
+		subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
+		description: 'Store, find and reuse artifacts between workflows and AI agents',
 		defaults: { name: 'Artefaktum' },
-		usableAsTool: true,
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
+		usableAsTool: true,
 		credentials: [{ name: 'artefaktumApi', required: true }],
-		properties: [],
+		properties: [
+			{
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				noDataExpression: true,
+				default: 'artifact',
+				options: [
+					{ name: 'Artifact', value: 'artifact' },
+					{ name: 'Project', value: 'project' },
+				],
+			},
+			artifactOperations,
+			projectOperations,
+			...artifactFields,
+			...projectFields,
+		],
 	};
+
+	methods = {
+		listSearch: {
+			async getProjects(this: ILoadOptionsFunctions, filter?: string): Promise<INodeListSearchResult> {
+				return searchProjects(this, filter);
+			},
+		},
+	};
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const items = this.getInputData();
+		const out: INodeExecutionData[] = [];
+		const projectCache = new Map<string, string>();
+
+		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+			const resource = this.getNodeParameter('resource', itemIndex) as string;
+			const operation = this.getNodeParameter('operation', itemIndex) as string;
+			const action = ACTIONS[resource]?.[operation];
+			if (!action) throw new NodeOperationError(this.getNode(), `The operation '${operation}' on '${resource}' is not supported`, { itemIndex });
+			try {
+				out.push(...(await action({ ctx: this, itemIndex, projectCache })));
+			} catch (error) {
+				if (this.continueOnFail()) {
+					out.push({ json: { error: (error as Error).message }, pairedItem: { item: itemIndex } });
+					continue;
+				}
+				// Actions already throw NodeApiError/NodeOperationError; NodeApiError's constructor
+				// returns the same instance unchanged when given one, so this preserves it as-is.
+				throw new NodeApiError(this.getNode(), error as JsonObject);
+			}
+		}
+		return [out];
+	}
 }
