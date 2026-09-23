@@ -16,7 +16,7 @@ const update: Action = async ({ ctx, itemIndex }) => {
 	if (f.clearExpiresAt === true) body.clear_expires_at = true;
 	else if (typeof f.expiresAt === 'string' && f.expiresAt) body.expires_at = f.expiresAt;
 	if (!Object.keys(body).length) throw new NodeOperationError(ctx.getNode(), "Set at least one field under 'Fields' to update", { itemIndex });
-	return [{ json: await apiRequest(ctx, 'PATCH', `/v1/artifacts/${id}`, { body, itemIndex }), pairedItem: { item: itemIndex } }];
+	return [{ json: await apiRequest(ctx, 'PATCH', `/v1/artifacts/${encodeURIComponent(id)}`, { body, itemIndex }), pairedItem: { item: itemIndex } }];
 };
 
 export default update;

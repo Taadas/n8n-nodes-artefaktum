@@ -28,7 +28,7 @@ describe('readContent', () => {
 
 	it('falls back to file.bin and octet-stream', async () => {
 		const { ctx } = mockExecute({
-			items: [{ json: {}, binary: { data: { data: '', mimeType: '' } } }],
+			items: [{ json: {}, binary: { data: { data: Buffer.from('x').toString('base64'), mimeType: '' } } }],
 			params: { inputDataSource: 'binary', binaryPropertyName: 'data', filename: '', contentType: '' },
 			responses: [],
 		});
@@ -40,6 +40,15 @@ describe('readContent', () => {
 	it('names the missing binary property', async () => {
 		const { ctx } = mockExecute({ items: [{ json: {} }], params: { inputDataSource: 'binary', binaryPropertyName: 'attachment' }, responses: [] });
 		await expect(readContent(ctx, 0)).rejects.toThrow("'attachment'");
+	});
+
+	it('rejects an empty binary file naming the property', async () => {
+		const { ctx } = mockExecute({
+			items: [{ json: {}, binary: { data: { data: '', mimeType: 'text/plain', fileName: 'empty.txt' } } }],
+			params: { inputDataSource: 'binary', binaryPropertyName: 'data', filename: '', contentType: '' },
+			responses: [],
+		});
+		await expect(readContent(ctx, 0)).rejects.toThrow("'data' is empty");
 	});
 
 	it('reads text with sensible defaults', async () => {

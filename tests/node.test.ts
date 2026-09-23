@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { NodeOperationError } from 'n8n-workflow';
 import { Artefaktum } from '../nodes/Artefaktum/Artefaktum.node';
 import { mockExecute, on } from './helpers/mockExecute';
 
@@ -49,5 +50,12 @@ describe('Artefaktum node', () => {
 	it('rejects an unknown operation clearly', async () => {
 		const { ctx } = mockExecute({ params: { resource: 'artifact', operation: 'fly' }, responses: [] });
 		await expect(new Artefaktum().execute.call(ctx)).rejects.toThrow(/not supported/);
+	});
+
+	it('surfaces an empty Artifact ID as a NodeOperationError, not wrapped in NodeApiError', async () => {
+		const { ctx } = mockExecute({ params: { resource: 'artifact', operation: 'delete', artifactId: '' }, responses: [] });
+		await expect(new Artefaktum().execute.call(ctx)).rejects.toThrow("'Artifact ID' is empty");
+		const err = await new Artefaktum().execute.call(ctx).catch((e) => e);
+		expect(err).toBeInstanceOf(NodeOperationError);
 	});
 });

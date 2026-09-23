@@ -106,10 +106,10 @@ const uploadOptions: INodeProperties = {
 	displayOptions: show(['upload', 'getOrUpload']),
 	options: [
 		{ displayName: 'Description', name: 'description', type: 'string', typeOptions: { rows: 3 }, default: '', description: 'Longer description; searched semantically' },
-		{ displayName: 'Expires In (Hours)', name: 'expiresInHours', type: 'number', default: 0, description: 'Delete the artifact automatically after this many hours. 0 keeps it.' },
+		{ displayName: 'Expires In (Hours)', name: 'expiresInHours', type: 'number', default: 0, description: 'Delete the artifact automatically after this many hours. 0 keeps it.', displayOptions: { show: { '/operation': ['upload'] } } },
 		{ displayName: 'External Key', name: 'externalKey', type: 'string', default: '', description: 'Your own unique key for this artifact within the project, e.g. a source URL or a hash', displayOptions: { show: { '/operation': ['upload'] } } },
 		{ displayName: 'Metadata (JSON)', name: 'metadata', type: 'json', default: '{}', description: 'Structured metadata, searchable by filters' },
-		{ displayName: 'Summary', name: 'summary', type: 'string', typeOptions: { rows: 3 }, default: '', description: 'A short summary of the content for search; leave empty to let the server derive one for text files' },
+		{ displayName: 'Summary', name: 'summary', type: 'string', typeOptions: { rows: 3 }, default: '', description: 'A short summary of the content for search; leave empty to let the server derive one for text files', displayOptions: { show: { '/operation': ['upload'] } } },
 		{ displayName: 'Tags', name: 'tags', type: 'string', default: '', placeholder: 'e.g. finance, q3, csv', description: 'Comma-separated tags' },
 	],
 };

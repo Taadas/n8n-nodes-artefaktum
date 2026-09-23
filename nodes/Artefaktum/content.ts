@@ -29,6 +29,7 @@ export async function readContent(ctx: IExecuteFunctions, itemIndex: number): Pr
 	const property = (ctx.getNodeParameter('binaryPropertyName', itemIndex, 'data') as string) || 'data';
 	const binary = ctx.helpers.assertBinaryData(itemIndex, property);
 	const bytes = await ctx.helpers.getBinaryDataBuffer(itemIndex, property);
+	if (bytes.length === 0) throw new NodeOperationError(ctx.getNode(), `The file in property '${property}' is empty`, { itemIndex });
 	return {
 		bytes,
 		filename: filenameParam || binary.fileName || 'file.bin',

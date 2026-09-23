@@ -10,16 +10,24 @@ const download: Action = async ({ ctx, itemIndex }) => {
 	const options = ctx.getNodeParameter('downloadOptions', itemIndex, {}) as IDataObject;
 	const property = (options.binaryPropertyName as string) || 'data';
 	const verify = options.verifyChecksum !== false;
+	const encodedId = encodeURIComponent(artifactId);
 
-	const artifact = await apiRequest(ctx, 'GET', `/v1/artifacts/${artifactId}`, { itemIndex });
+	const artifact = await apiRequest(ctx, 'GET', `/v1/artifacts/${encodedId}`, { itemIndex });
 	const qs: IDataObject = {};
 	if (typeof options.versionId === 'string' && options.versionId.trim()) qs.version_id = options.versionId.trim();
-	const link = await apiRequest(ctx, 'GET', `/v1/artifacts/${artifactId}/download`, { itemIndex, qs: Object.keys(qs).length ? qs : undefined });
+	const link = await apiRequest(ctx, 'GET', `/v1/artifacts/${encodedId}/download`, { itemIndex, qs: Object.keys(qs).length ? qs : undefined });
 	const bytes = await storageRequest(ctx, { method: String(link.method ?? 'GET'), url: String(link.url), headers: {}, expires_at: String(link.expires_at ?? '') }, { itemIndex });
 
-	const version = (artifact.latest_version as IDataObject | null) ?? {};
-	const sameVersion = !qs.version_id || qs.version_id === version.id;
-	if (verify && sameVersion && typeof version.sha256 === 'string' && version.sha256) {
+	let version = (artifact.latest_version as IDataObject | null) ?? {};
+	const servedVersionId = typeof link.version_id === 'string' ? link.version_id : undefined;
+	if (servedVersionId && servedVersionId !== version.id) {
+		// The served bytes are an older version than latest_version: latest_version's filename/mime/sha256
+		// describe the wrong file, so look the served version up instead of mislabelling and misverifying it.
+		const versions = (await apiRequest(ctx, 'GET', `/v1/artifacts/${encodedId}/versions`, { itemIndex })) as unknown as IDataObject[];
+		const match = (Array.isArray(versions) ? versions : []).find((v) => v.id === servedVersionId);
+		if (match) version = match;
+	}
+	if (verify && typeof version.sha256 === 'string' && version.sha256) {
 		const actual = sha256Hex(bytes);
 		if (actual !== version.sha256) throw new NodeOperationError(ctx.getNode(), `Checksum mismatch for artifact ${artifactId}: expected ${version.sha256}, got ${actual}. Run the node again; if it persists, the stored object is damaged.`, { itemIndex });
 	}

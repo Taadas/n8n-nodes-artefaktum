@@ -12,9 +12,9 @@ export async function putAndComplete(
 	itemIndex: number,
 ): Promise<IDataObject> {
 	await storageRequest(ctx, upload, { body: content.bytes, itemIndex });
-	await apiRequest(ctx, 'POST', `/v1/artifacts/${artifactId}/versions/${versionId}/complete`, {
+	await apiRequest(ctx, 'POST', `/v1/artifacts/${encodeURIComponent(artifactId)}/versions/${encodeURIComponent(versionId)}/complete`, {
 		body: { sha256: sha256Hex(content.bytes), size_bytes: content.bytes.length },
 		itemIndex,
 	});
-	return apiRequest(ctx, 'GET', `/v1/artifacts/${artifactId}`, { itemIndex });
+	return apiRequest(ctx, 'GET', `/v1/artifacts/${encodeURIComponent(artifactId)}`, { itemIndex });
 }

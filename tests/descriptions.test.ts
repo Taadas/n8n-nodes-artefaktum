@@ -22,6 +22,15 @@ describe('artifact descriptions', () => {
 		expect(key?.displayOptions?.show?.operation).toEqual(['getOrUpload']);
 	});
 
+	it('hides Summary and Expires In (Hours) for getOrUpload (resolve accepts neither)', () => {
+		const uploadOptions = artifactFields.find((f) => f.name === 'uploadOptions')!;
+		const options = uploadOptions.options as Array<{ name: string; displayOptions?: { show?: Record<string, unknown> } }>;
+		for (const name of ['summary', 'expiresInHours']) {
+			const opt = options.find((o) => o.name === name)!;
+			expect(opt.displayOptions?.show?.['/operation']).toEqual(['upload']);
+		}
+	});
+
 	it('project locator defaults to the default slug', () => {
 		const p = projectLocator(['upload']);
 		expect(p.type).toBe('resourceLocator');

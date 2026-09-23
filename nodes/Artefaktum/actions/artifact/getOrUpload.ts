@@ -14,7 +14,7 @@ const getOrUpload: Action = async ({ ctx, itemIndex, projectCache }) => {
 	if (!externalKey) throw new NodeOperationError(ctx.getNode(), "Parameter 'External Key' is empty", { itemIndex });
 	const maxAge = Number(ctx.getNodeParameter('maxAgeSeconds', itemIndex, 0));
 	const content = await readContent(ctx, itemIndex);
-	const body: IDataObject = { project_id: projectId, external_key: externalKey, ...uploadMetadata(ctx, itemIndex, content, { externalKey: false }) };
+	const body: IDataObject = { project_id: projectId, external_key: externalKey, ...uploadMetadata(ctx, itemIndex, content, { externalKey: false, forResolve: true }) };
 	if (maxAge > 0) body.max_age_seconds = Math.floor(maxAge);
 
 	for (let round = 0; round <= MAX_PENDING_ROUNDS; round++) {

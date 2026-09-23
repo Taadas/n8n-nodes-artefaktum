@@ -30,19 +30,27 @@ export function parseJsonParam(ctx: IExecuteFunctions, value: unknown, displayNa
 	}
 }
 
-/** The metadata half of an upload or resolve body, from the shared upload parameters. */
-export function uploadMetadata(ctx: IExecuteFunctions, itemIndex: number, content: Content, opts: { externalKey?: boolean } = {}): IDataObject {
+/**
+ * The metadata half of an upload or resolve body, from the shared upload parameters.
+ *
+ * `forResolve` restricts the body to the fields `ResolveRequest` accepts: `summary` and
+ * `expires_at` are Upload-only server-side, and the resolve endpoint rejects unknown fields
+ * with HTTP 400, so those two must never be included even if a stale workflow still has them set.
+ */
+export function uploadMetadata(ctx: IExecuteFunctions, itemIndex: number, content: Content, opts: { externalKey?: boolean; forResolve?: boolean } = {}): IDataObject {
 	const title = (ctx.getNodeParameter('title', itemIndex, '') as string).trim() || content.filename;
 	const options = ctx.getNodeParameter('uploadOptions', itemIndex, {}) as IDataObject;
 	const body: IDataObject = { title, filename: content.filename, content_type: content.contentType, size_bytes: content.bytes.length };
 	if (typeof options.description === 'string' && options.description.trim()) body.description = options.description.trim();
-	if (typeof options.summary === 'string' && options.summary.trim()) body.summary = options.summary.trim();
+	if (!opts.forResolve && typeof options.summary === 'string' && options.summary.trim()) body.summary = options.summary.trim();
 	const tags = splitList(options.tags);
 	if (tags.length) body.tags = tags;
 	const metadata = parseJsonParam(ctx, options.metadata, 'Metadata (JSON)', itemIndex);
 	if (metadata && Object.keys(metadata).length) body.metadata = metadata;
-	const hours = Number(options.expiresInHours ?? 0);
-	if (hours > 0) body.expires_at = new Date(Date.now() + hours * 3600 * 1000).toISOString();
+	if (!opts.forResolve) {
+		const hours = Number(options.expiresInHours ?? 0);
+		if (hours > 0) body.expires_at = new Date(Date.now() + hours * 3600 * 1000).toISOString();
+	}
 	if (opts.externalKey !== false && typeof options.externalKey === 'string' && options.externalKey.trim()) body.external_key = options.externalKey.trim();
 	return body;
 }

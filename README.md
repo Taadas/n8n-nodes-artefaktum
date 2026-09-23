@@ -44,10 +44,10 @@ change for a self-hosted Artefaktum instance.
 | Content Type | Upload, Get or Upload | MIME type. Defaults to the binary file type, or `text/plain` for text. |
 | Title | Upload, Get or Upload | What the artifact is. Searched by other agents. Defaults to the file name. |
 | Options → Description | Upload, Get or Upload | Longer description; searched semantically. |
-| Options → Expires In (Hours) | Upload, Get or Upload | Delete the artifact automatically after this many hours. `0` keeps it. |
+| Options → Expires In (Hours) | Upload | Delete the artifact automatically after this many hours. `0` keeps it. |
 | Options → External Key | Upload | Your own unique key for this artifact within the project, e.g. a source URL or a hash. |
 | Options → Metadata (JSON) | Upload, Get or Upload | Structured metadata, searchable by filters. |
-| Options → Summary | Upload, Get or Upload | A short summary of the content for search; leave empty to let the server derive one for text files. |
+| Options → Summary | Upload | A short summary of the content for search; leave empty to let the server derive one for text files. |
 | Options → Tags | Upload, Get or Upload | Comma-separated tags. |
 | Lookup | Get | Find the artifact by ID or by External Key. |
 | Artifact ID | Download, Update, Delete, Get (Lookup = By ID) | The artifact ID, e.g. from a previous Artefaktum node in this workflow. |

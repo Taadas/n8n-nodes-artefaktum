@@ -58,4 +58,16 @@ describe('artifact:getOrUpload', () => {
 		const { ctx } = mockExecute({ params, responses: [on('GET', '/v1/projects', { body: projects }), pending, pending, pending, pending, pending, pending] });
 		await expect(getOrUpload({ ctx, itemIndex: 0, projectCache: new Map() })).rejects.toThrow(/still being uploaded/);
 	});
+
+	it('never sends summary or expires_at to resolve, even when set', async () => {
+		const { ctx, calls } = mockExecute({
+			params: { ...params, uploadOptions: { summary: 'x', expiresInHours: 3, description: 'd', tags: 'a' } },
+			responses: [on('GET', '/v1/projects', { body: projects }), on('POST', '/v1/artifacts/resolve', { body: { status: 'hit', artifact } })],
+		});
+		await getOrUpload({ ctx, itemIndex: 0, projectCache: new Map() });
+		const resolve = calls[1].body as Record<string, unknown>;
+		expect(resolve).toMatchObject({ description: 'd', tags: ['a'] });
+		expect(resolve.summary).toBeUndefined();
+		expect(resolve.expires_at).toBeUndefined();
+	});
 });

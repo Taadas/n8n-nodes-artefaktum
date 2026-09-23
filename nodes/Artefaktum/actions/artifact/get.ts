@@ -14,7 +14,7 @@ const get: Action = async ({ ctx, itemIndex, projectCache }) => {
 	}
 	const id = (ctx.getNodeParameter('artifactId', itemIndex) as string).trim();
 	if (!id) throw new NodeOperationError(ctx.getNode(), "Parameter 'Artifact ID' is empty", { itemIndex });
-	return [{ json: await apiRequest(ctx, 'GET', `/v1/artifacts/${id}`, { itemIndex }), pairedItem: { item: itemIndex } }];
+	return [{ json: await apiRequest(ctx, 'GET', `/v1/artifacts/${encodeURIComponent(id)}`, { itemIndex }), pairedItem: { item: itemIndex } }];
 };
 
 export default get;

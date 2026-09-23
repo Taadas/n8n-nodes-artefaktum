@@ -78,6 +78,19 @@ describe('artifact:getMany', () => {
 		expect(out).toHaveLength(1000);
 		expect(calls.length).toBeLessThanOrEqual(10);
 	});
+
+	it('stops after 20 pages even if the server keeps handing back a next_cursor', async () => {
+		// One hit per page and no item cap in play (well under 1,000), so only the page cap can stop this.
+		const page = () => ({ items: [hit('x')], next_cursor: 'more', mode: 'hybrid' });
+		const responses = Array.from({ length: 25 }, () => on('POST', '/v1/artifacts/search', { body: page() }));
+		const { ctx, calls } = mockExecute({
+			params: { project: { mode: 'id', value: 'p1' }, query: '', mode: 'hybrid', returnAll: true, filters: {} },
+			responses,
+		});
+		const out = await getMany({ ...a, ctx });
+		expect(out).toHaveLength(20);
+		expect(calls).toHaveLength(20);
+	});
 });
 
 describe('artifact:update', () => {

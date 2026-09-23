@@ -84,6 +84,11 @@ export class Artefaktum implements INodeType {
 					out.push({ json: { error: (error as Error).message }, pairedItem: { item: itemIndex } });
 					continue;
 				}
+				// A NodeOperationError already carries its own itemIndex; NodeApiError's constructor
+				// does not special-case NodeOperationError (only NodeApiError), so wrapping it there
+				// would rebuild the error and lose that itemIndex. NodeOperationError's constructor
+				// does return the same instance unchanged when given one, so route through it instead.
+				if (error instanceof NodeOperationError) throw new NodeOperationError(this.getNode(), error);
 				// Actions already throw NodeApiError/NodeOperationError; NodeApiError's constructor
 				// returns the same instance unchanged when given one, so this preserves it as-is.
 				throw new NodeApiError(this.getNode(), error as JsonObject);
