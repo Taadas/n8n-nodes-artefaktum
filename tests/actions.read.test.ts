@@ -1,0 +1,91 @@
+import { describe, expect, it } from 'vitest';
+import del from '../nodes/Artefaktum/actions/artifact/del';
+import get from '../nodes/Artefaktum/actions/artifact/get';
+import getMany from '../nodes/Artefaktum/actions/artifact/getMany';
+import update from '../nodes/Artefaktum/actions/artifact/update';
+import projectGetMany from '../nodes/Artefaktum/actions/project/getMany';
+import { mockExecute, on } from './helpers/mockExecute';
+
+const projects = { items: [{ id: 'p1', name: 'default', slug: 'default' }, { id: 'p2', name: 'R', slug: 'r' }] };
+const artifact = { id: 'a1', title: 'T', status: 'ready' };
+const a = { ctx: undefined as never, itemIndex: 0, projectCache: new Map<string, string>() };
+
+describe('artifact:get', () => {
+	it('by id', async () => {
+		const { ctx, calls } = mockExecute({ params: { lookup: 'id', artifactId: 'a1' }, responses: [on('GET', '/v1/artifacts/a1', { body: artifact })] });
+		expect(await get({ ...a, ctx })).toEqual([{ json: artifact, pairedItem: { item: 0 } }]);
+		expect(calls[0].url).toBe('https://api.test/v1/artifacts/a1');
+	});
+
+	it('by external key, url-encoded, with the project id', async () => {
+		const { ctx, calls } = mockExecute({
+			params: { lookup: 'externalKey', externalKey: 'weather:today/vilnius', project: { mode: 'slug', value: 'r' } },
+			responses: [on('GET', '/v1/projects', { body: projects }), on('GET', '/v1/artifacts/by-external-key/', { body: artifact })],
+		});
+		await get({ ...a, ctx });
+		expect(calls[1].url).toBe('https://api.test/v1/artifacts/by-external-key/weather%3Atoday%2Fvilnius');
+		expect(calls[1].qs).toEqual({ project_id: 'p2' });
+	});
+});
+
+describe('artifact:getMany', () => {
+	const hit = (id: string) => ({ artifact: { ...artifact, id }, score: 0.5, match_mode: 'hybrid' });
+
+	it('searches with filters and flattens hits', async () => {
+		const { ctx, calls } = mockExecute({
+			params: { project: { mode: 'id', value: 'p1' }, query: 'emissions', mode: 'semantic', returnAll: false, limit: 2, filters: { tags: 'a, b', contentTypes: 'text/csv', createdAfter: '2026-01-01T00:00:00.000Z', includeSuperseded: true } },
+			responses: [on('POST', '/v1/artifacts/search', { body: { items: [hit('a1'), hit('a2')], next_cursor: 'c2', mode: 'semantic' } })],
+		});
+		const out = await getMany({ ...a, ctx });
+		expect(out.map((o) => o.json.id)).toEqual(['a1', 'a2']);
+		expect(out[0].json).toMatchObject({ score: 0.5, match_mode: 'hybrid' });
+		expect(calls[0].body).toEqual({ project_id: 'p1', query: 'emissions', mode: 'semantic', limit: 2, filters: { tags_all: ['a', 'b'], content_types: ['text/csv'], created_after: '2026-01-01T00:00:00.000Z', exclude_superseded: false } });
+	});
+
+	it('follows cursors when returnAll is set', async () => {
+		const { ctx, calls } = mockExecute({
+			params: { project: { mode: 'id', value: 'p1' }, query: '', mode: 'hybrid', returnAll: true, filters: {} },
+			responses: [
+				on('POST', '/v1/artifacts/search', { body: { items: [hit('a1')], next_cursor: 'c2', mode: 'hybrid' } }),
+				on('POST', '/v1/artifacts/search', { body: { items: [hit('a2')], next_cursor: null, mode: 'hybrid' } }),
+			],
+		});
+		const out = await getMany({ ...a, ctx });
+		expect(out.map((o) => o.json.id)).toEqual(['a1', 'a2']);
+		expect((calls[1].body as Record<string, unknown>).cursor).toBe('c2');
+		expect((calls[0].body as Record<string, unknown>).limit).toBe(100);
+	});
+});
+
+describe('artifact:update', () => {
+	it('sends only the fields that are set', async () => {
+		const { ctx, calls } = mockExecute({
+			params: { artifactId: 'a1', updateFields: { title: 'New', tags: 'x, y', metadata: '{"k":1}', clearExpiresAt: true } },
+			responses: [on('PATCH', '/v1/artifacts/a1', { body: { ...artifact, title: 'New' } })],
+		});
+		const out = await update({ ...a, ctx });
+		expect(out[0].json).toMatchObject({ title: 'New' });
+		expect(calls[0].body).toEqual({ title: 'New', tags: ['x', 'y'], metadata: { k: 1 }, clear_expires_at: true });
+	});
+
+	it('refuses an empty update', async () => {
+		const { ctx } = mockExecute({ params: { artifactId: 'a1', updateFields: {} }, responses: [] });
+		await expect(update({ ...a, ctx })).rejects.toThrow(/at least one field/i);
+	});
+});
+
+describe('artifact:delete', () => {
+	it('deletes and reports', async () => {
+		const { ctx, calls } = mockExecute({ params: { artifactId: 'a1' }, responses: [on('DELETE', '/v1/artifacts/a1', { statusCode: 202, body: undefined })] });
+		expect(await del({ ...a, ctx })).toEqual([{ json: { id: 'a1', deleted: true }, pairedItem: { item: 0 } }]);
+		expect(calls[0].method).toBe('DELETE');
+	});
+});
+
+describe('project:getMany', () => {
+	it('lists projects one per item', async () => {
+		const { ctx } = mockExecute({ responses: [on('GET', '/v1/projects', { body: projects })] });
+		const out = await projectGetMany({ ...a, ctx });
+		expect(out.map((o) => o.json.slug)).toEqual(['default', 'r']);
+	});
+});
