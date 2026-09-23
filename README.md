@@ -69,6 +69,10 @@ change for a self-hosted Artefaktum instance.
 | Update Fields → Expires At | Update | Set a new expiry. |
 | Update Fields → Clear Expiry | Update | Whether to remove the expiry so the artifact is kept. |
 
+An empty value under **Update Fields** is ignored — leave a field empty to
+keep it unchanged. Clearing description or metadata back to empty is not
+supported yet.
+
 Operations: **Upload**, **Get or Upload**, **Download**, **Get**,
 **Get Many**, **Update**, **Delete**.
 
@@ -84,19 +88,15 @@ once its status is `ready`.
 
 ## Get or Upload (caching)
 
-Use **Get or Upload** to cache the result of an expensive call — an API
-request, a report generation, an LLM completion — behind a key you choose.
-Give it an **External Key** that identifies the result (for example
-`weather:vilnius:2026-09-23`) and a **Max Age (Seconds)**. On each run:
-
-- if an artifact with that key exists and is younger than the max age, it is
-  returned as-is (`cache: "hit"` in the output) and the upstream call is
-  skipped entirely by putting the expensive step *after* a check, or by
-  feeding its result into Get or Upload every time and letting Artefaktum
-  decide whether to keep the new upload or hand back the cached one
-  (`cache: "created"` when it stores what you sent);
-- if not, the content you provide is uploaded and stored under that key for
-  next time.
+Get or Upload always needs the content, because the API requires
+`size_bytes` to resolve the key — so to skip an expensive step entirely,
+call **Get** by external key first and branch on whether it succeeds. Use
+**Get or Upload** instead when you want a stable stored copy and
+de-duplication: give it an **External Key** that identifies the result (for
+example `weather:vilnius:2026-09-23`) and a **Max Age (Seconds)**; if an
+artifact with that key exists and is younger than the max age, it is
+returned as-is (`cache: "hit"` in the output), otherwise the content you
+provide is uploaded and stored under that key (`cache: "created"`).
 
 See [`examples/cache-api-response.json`](examples/cache-api-response.json)
 for a complete workflow: Manual Trigger → HTTP Request (a weather API) →
@@ -107,18 +107,35 @@ per-day key.
 
 Artefaktum enforces per-plan quotas — storage, request rate and artifact
 count — see [pricing](https://artefaktum.dev/pricing/) for the current
-limits, plus a per-file size limit. When a quota is exceeded the API returns
-`quota_exceeded` as the error text.
+limits, plus a per-file size limit: 100 MB on the Free plan, 5 GB on Pro.
+When a quota is exceeded the API returns `quota_exceeded` as the error text.
+
+In practice the node's own memory use is the tighter constraint on small
+n8n instances: it buffers each file fully in memory for both upload and
+download, roughly 2–3× the file size per item. Keep individual files to
+tens of MB and avoid large batches when running n8n with limited memory.
 
 ## Development
 
 ```bash
-npm install      # install dependencies
-npm run dev       # run the node in n8n's dev environment
-npm test          # run the test suite
-npm run lint      # lint the package
-npm run build     # build the package to dist/
+npm install     # install dependencies
+npm test        # unit tests (the live test skips without ARTEFAKTUM_TEST_API_KEY)
+npm run lint
+npm run build   # build to dist/
 ```
+
+`npm run dev` starts n8n with the node linked. It needs Node ≥ 24 and installs n8n on
+first use, which can take a long time. A reliable alternative is n8n from Docker with
+the built package installed into n8n's nodes directory:
+
+```bash
+npm run build && npm pack                       # produces n8n-nodes-artefaktum-<version>.tgz
+mkdir -p ~/.n8n/nodes && cd ~/.n8n/nodes && npm install /path/to/n8n-nodes-artefaktum-<version>.tgz
+docker run -it --rm -p 5678:5678 -v ~/.n8n:/home/node/.n8n n8nio/n8n:latest
+```
+
+Do not use `N8N_CUSTOM_EXTENSIONS`: it registers the node under the package name
+`CUSTOM`, so workflows referencing `n8n-nodes-artefaktum.artefaktum` will not load.
 
 Releases are cut by pushing a version tag; see `npm run release`.
 

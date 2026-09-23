@@ -163,6 +163,8 @@ export const artifactFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		required: true,
+		placeholder: 'e.g. 0192a1b2-3c4d-7e5f-8a9b-0c1d2e3f4a5b',
+		description: 'The artifact ID, e.g. from a previous Artefaktum node in this workflow',
 		displayOptions: { show: { resource: ['artifact'], operation: ['get'], lookup: ['id'] } },
 	},
 	{
@@ -173,7 +175,10 @@ export const artifactFields: INodeProperties[] = [
 		required: true,
 		displayOptions: { show: { resource: ['artifact'], operation: ['get'], lookup: ['externalKey'] } },
 	},
-	projectLocator(['get']),
+	{
+		...projectLocator(['get']),
+		displayOptions: { show: { resource: ['artifact'], operation: ['get'], lookup: ['externalKey'] } },
+	},
 	{
 		displayName: 'Options',
 		name: 'downloadOptions',

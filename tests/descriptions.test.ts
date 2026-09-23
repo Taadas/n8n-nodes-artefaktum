@@ -31,6 +31,21 @@ describe('artifact descriptions', () => {
 		}
 	});
 
+	it('gives both Artifact ID fields the same description and placeholder', () => {
+		const ids = artifactFields.filter((f) => f.name === 'artifactId');
+		expect(ids).toHaveLength(2);
+		expect(ids[0].description).toBe(ids[1].description);
+		expect(ids[0].placeholder).toBe(ids[1].placeholder);
+		expect(ids[0].description).toBeTruthy();
+		expect(ids[0].placeholder).toBeTruthy();
+	});
+
+	it('shows the get project locator only when looking up by external key', () => {
+		const locators = artifactFields.filter((f) => f.name === 'project' && (f.displayOptions?.show?.operation as string[] | undefined)?.includes('get'));
+		const getLocator = locators.find((f) => (f.displayOptions?.show?.operation as string[]).length === 1);
+		expect(getLocator?.displayOptions?.show?.lookup).toEqual(['externalKey']);
+	});
+
 	it('project locator defaults to the default slug', () => {
 		const p = projectLocator(['upload']);
 		expect(p.type).toBe('resourceLocator');

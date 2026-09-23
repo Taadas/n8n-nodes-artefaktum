@@ -29,7 +29,7 @@ export class ArtefaktumApi implements ICredentialType {
 			name: 'baseUrl',
 			type: 'string',
 			default: 'https://api.artefaktum.dev',
-			description: 'Change only for a self-hosted Artefaktum',
+			description: 'Change only for a self-hosted Artefaktum, without a trailing slash',
 		},
 	];
 
