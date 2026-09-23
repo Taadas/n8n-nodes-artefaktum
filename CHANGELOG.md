@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.3 — 2026-09-23
+
+- Package author contact set to support@artefaktum.dev.
+
 ## 0.1.2 — 2026-09-23
 
 - Added a Simplify parameter to Get and Get Many, on by default, returning a smaller set of stable fields instead of the raw API response.
