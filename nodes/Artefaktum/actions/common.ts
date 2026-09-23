@@ -55,6 +55,26 @@ export function uploadMetadata(ctx: IExecuteFunctions, itemIndex: number, conten
 	return body;
 }
 
+/** The fields the Simplify option keeps: a stable subset of the raw artifact plus its latest version's content type and size. */
+export function simplifyArtifact(a: IDataObject): IDataObject {
+	const latestVersion = a.latest_version as IDataObject | undefined;
+	const out: IDataObject = {};
+	const keep = (key: string, value: unknown) => {
+		if (value !== undefined) out[key] = value;
+	};
+	keep('id', a.id);
+	keep('title', a.title);
+	keep('description', a.description);
+	keep('tags', a.tags);
+	keep('external_key', a.external_key);
+	keep('status', a.status);
+	keep('content_type', latestVersion?.content_type);
+	keep('size_bytes', latestVersion?.size_bytes);
+	keep('created_at', a.created_at);
+	keep('updated_at', a.updated_at);
+	return out;
+}
+
 export function locator(ctx: IExecuteFunctions, itemIndex: number): { mode: 'list' | 'slug' | 'id'; value: string } {
 	const raw = ctx.getNodeParameter('project', itemIndex) as { mode?: string; value?: unknown } | string;
 	if (typeof raw === 'string') return { mode: 'slug', value: raw };

@@ -7,7 +7,7 @@ export function projectLocator(operations: string[]): INodeProperties {
 		displayName: 'Project',
 		name: 'project',
 		type: 'resourceLocator',
-		default: { mode: 'slug', value: 'default' },
+		default: { mode: 'list', value: '' },
 		required: true,
 		description: 'The project the artifact belongs to. Every tenant has a project with slug "default".',
 		modes: [
@@ -230,6 +230,14 @@ export const artifactFields: INodeProperties[] = [
 		typeOptions: { minValue: 1, maxValue: 100 },
 		description: 'Max number of results to return',
 		displayOptions: { show: { resource: ['artifact'], operation: ['getMany'], returnAll: [false] } },
+	},
+	{
+		displayName: 'Simplify',
+		name: 'simplify',
+		type: 'boolean',
+		default: true,
+		description: 'Whether to return a simplified version of the response instead of the raw data',
+		displayOptions: show(['get', 'getMany']),
 	},
 	{
 		displayName: 'Filters',

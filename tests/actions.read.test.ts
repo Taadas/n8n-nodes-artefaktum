@@ -12,19 +12,57 @@ const a = { ctx: undefined as never, itemIndex: 0, projectCache: new Map<string,
 
 describe('artifact:get', () => {
 	it('by id', async () => {
-		const { ctx, calls } = mockExecute({ params: { lookup: 'id', artifactId: 'a1' }, responses: [on('GET', '/v1/artifacts/a1', { body: artifact })] });
+		const { ctx, calls } = mockExecute({ params: { lookup: 'id', artifactId: 'a1', simplify: false }, responses: [on('GET', '/v1/artifacts/a1', { body: artifact })] });
 		expect(await get({ ...a, ctx })).toEqual([{ json: artifact, pairedItem: { item: 0 } }]);
 		expect(calls[0].url).toBe('https://api.test/v1/artifacts/a1');
 	});
 
 	it('by external key, url-encoded, with the project id', async () => {
 		const { ctx, calls } = mockExecute({
-			params: { lookup: 'externalKey', externalKey: 'weather:today/vilnius', project: { mode: 'slug', value: 'r' } },
+			params: { lookup: 'externalKey', externalKey: 'weather:today/vilnius', project: { mode: 'slug', value: 'r' }, simplify: false },
 			responses: [on('GET', '/v1/projects', { body: projects }), on('GET', '/v1/artifacts/by-external-key/', { body: artifact })],
 		});
 		await get({ ...a, ctx });
 		expect(calls[1].url).toBe('https://api.test/v1/artifacts/by-external-key/weather%3Atoday%2Fvilnius');
 		expect(calls[1].qs).toEqual({ project_id: 'p2' });
+	});
+
+	const fullArtifact = {
+		id: 'a1',
+		title: 'T',
+		description: 'D',
+		tags: ['x', 'y'],
+		external_key: 'ek1',
+		status: 'ready',
+		latest_version: { id: 'v1', content_type: 'text/csv', size_bytes: 123 },
+		created_at: '2026-01-01T00:00:00.000Z',
+		updated_at: '2026-01-02T00:00:00.000Z',
+		metadata: { k: 1 },
+		created_by: 'user1',
+		superseded: false,
+	};
+
+	it('simplifies the response when simplify is true', async () => {
+		const { ctx } = mockExecute({ params: { lookup: 'id', artifactId: 'a1', simplify: true }, responses: [on('GET', '/v1/artifacts/a1', { body: fullArtifact })] });
+		const out = await get({ ...a, ctx });
+		expect(out[0].json).toEqual({
+			id: 'a1',
+			title: 'T',
+			description: 'D',
+			tags: ['x', 'y'],
+			external_key: 'ek1',
+			status: 'ready',
+			content_type: 'text/csv',
+			size_bytes: 123,
+			created_at: '2026-01-01T00:00:00.000Z',
+			updated_at: '2026-01-02T00:00:00.000Z',
+		});
+	});
+
+	it('returns the raw object when simplify is false', async () => {
+		const { ctx } = mockExecute({ params: { lookup: 'id', artifactId: 'a1', simplify: false }, responses: [on('GET', '/v1/artifacts/a1', { body: fullArtifact })] });
+		const out = await get({ ...a, ctx });
+		expect(out[0].json).toEqual(fullArtifact);
 	});
 });
 
@@ -33,7 +71,7 @@ describe('artifact:getMany', () => {
 
 	it('searches with filters and flattens hits', async () => {
 		const { ctx, calls } = mockExecute({
-			params: { project: { mode: 'id', value: 'p1' }, query: 'emissions', mode: 'semantic', returnAll: false, limit: 2, filters: { tags: 'a, b', contentTypes: 'text/csv', createdAfter: '2026-01-01T00:00:00.000Z', includeSuperseded: true } },
+			params: { project: { mode: 'id', value: 'p1' }, query: 'emissions', mode: 'semantic', returnAll: false, limit: 2, filters: { tags: 'a, b', contentTypes: 'text/csv', createdAfter: '2026-01-01T00:00:00.000Z', includeSuperseded: true }, simplify: false },
 			responses: [on('POST', '/v1/artifacts/search', { body: { items: [hit('a1'), hit('a2')], next_cursor: 'c2', mode: 'semantic' } })],
 		});
 		const out = await getMany({ ...a, ctx });
@@ -42,9 +80,19 @@ describe('artifact:getMany', () => {
 		expect(calls[0].body).toEqual({ project_id: 'p1', query: 'emissions', mode: 'semantic', limit: 2, filters: { tags_all: ['a', 'b'], content_types: ['text/csv'], created_after: '2026-01-01T00:00:00.000Z', exclude_superseded: false } });
 	});
 
+	it('keeps score and match_mode on the simplified item', async () => {
+		const full = { id: 'a1', title: 'T', status: 'ready', metadata: { k: 1 }, created_by: 'user1' };
+		const { ctx } = mockExecute({
+			params: { project: { mode: 'id', value: 'p1' }, query: '', mode: 'hybrid', returnAll: false, limit: 50, filters: {}, simplify: true },
+			responses: [on('POST', '/v1/artifacts/search', { body: { items: [{ artifact: full, score: 0.9, match_mode: 'text' }], next_cursor: null, mode: 'hybrid' } })],
+		});
+		const out = await getMany({ ...a, ctx });
+		expect(out[0].json).toEqual({ id: 'a1', title: 'T', status: 'ready', score: 0.9, match_mode: 'text' });
+	});
+
 	it('follows cursors when returnAll is set', async () => {
 		const { ctx, calls } = mockExecute({
-			params: { project: { mode: 'id', value: 'p1' }, query: '', mode: 'hybrid', returnAll: true, filters: {} },
+			params: { project: { mode: 'id', value: 'p1' }, query: '', mode: 'hybrid', returnAll: true, filters: {}, simplify: false },
 			responses: [
 				on('POST', '/v1/artifacts/search', { body: { items: [hit('a1')], next_cursor: 'c2', mode: 'hybrid' } }),
 				on('POST', '/v1/artifacts/search', { body: { items: [hit('a2')], next_cursor: null, mode: 'hybrid' } }),

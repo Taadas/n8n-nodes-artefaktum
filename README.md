@@ -7,7 +7,7 @@ hand results to each other instead of recomputing them.
 
 [n8n](https://n8n.io/) is a [fair-code licensed](https://docs.n8n.io/sustainable-use-license/) workflow automation platform.
 
-## Install
+## Installation
 
 **Self-hosted n8n**: run `npm install n8n-nodes-artefaktum` in your n8n
 custom nodes directory, or install it from n8n's UI under
@@ -18,19 +18,13 @@ for details.
 **n8n Cloud**: the node will be installable directly from the Cloud node
 panel once it has passed n8n's community node verification.
 
-## Credentials
-
-Mint an API key in the [Artefaktum console](https://artefaktum.dev/console/)
-and paste it into the node credential's **API Key** field. Choose the scopes
-the workflow actually needs: `read`, `write`, `search`, and `delete` — only
-grant `delete` if the workflow deletes artifacts.
-
-**Base URL** defaults to `https://api.artefaktum.dev` and only needs to
-change for a self-hosted Artefaktum instance.
-
 ## Operations
 
 ### Artifact
+
+The **Project** field's "From List" mode lists the projects in your
+account; every account also has a project with slug `default`, which you
+can also enter directly in Slug mode.
 
 | Parameter | Applies to | Description |
 | --- | --- | --- |
@@ -61,6 +55,7 @@ change for a self-hosted Artefaktum instance.
 | Search Mode | Get Many | Hybrid (keyword and meaning combined), Semantic (by meaning) or Text (by keywords). |
 | Return All | Get Many | Whether to return all results or only up to a given limit. |
 | Limit | Get Many | Max number of results to return. |
+| Simplify | Get, Get Many | Whether to return a simplified version of the response instead of the raw data. On by default. |
 | Filters → Content Types | Get Many | Comma-separated MIME types. |
 | Filters → Created After / Created Before | Get Many | Restrict results to a date range. |
 | Filters → Include Superseded | Get Many | Whether to include artifacts that a newer artifact supersedes. |
@@ -86,7 +81,25 @@ once its status is `ready`.
 | --- | --- | --- |
 | — | Get Many | Lists the projects of your tenant. No parameters beyond Resource/Operation. |
 
-## Get or Upload (caching)
+## Credentials
+
+Mint an API key in the [Artefaktum console](https://artefaktum.dev/console/)
+and paste it into the node credential's **API Key** field. Choose the scopes
+the workflow actually needs: `read`, `write`, `search`, and `delete` — only
+grant `delete` if the workflow deletes artifacts.
+
+**Base URL** defaults to `https://api.artefaktum.dev` and only needs to
+change for a self-hosted Artefaktum instance.
+
+## Compatibility
+
+Requires n8n 1.0 or later. Tested against n8n 1.x images
+(`n8nio/n8n:latest`, September 2026) and Node.js 20, 22 and 24. No runtime
+dependencies.
+
+## Usage
+
+### Get or Upload (caching)
 
 Get or Upload always needs the content, because the API requires
 `size_bytes` to resolve the key — so to skip an expensive step entirely,
@@ -103,7 +116,7 @@ for a complete workflow: Manual Trigger → HTTP Request (a weather API) →
 Artefaktum (Get or Upload), caching the response for an hour under a
 per-day key.
 
-## Limits
+### Limits
 
 Artefaktum enforces per-plan quotas — storage, request rate and artifact
 count — see [pricing](https://artefaktum.dev/pricing/) for the current
@@ -114,6 +127,24 @@ In practice the node's own memory use is the tighter constraint on small
 n8n instances: it buffers each file fully in memory for both upload and
 download, roughly 2–3× the file size per item. Keep individual files to
 tens of MB and avoid large batches when running n8n with limited memory.
+
+Search results are ordered by relevance; there is no sort option because
+the Artefaktum API ranks results itself.
+
+## Resources
+
+- [n8n community nodes documentation](https://docs.n8n.io/integrations/community-nodes/)
+- [Artefaktum](https://artefaktum.dev)
+- [Artefaktum pricing](https://artefaktum.dev/pricing/)
+- [Artefaktum TypeScript SDK](https://www.npmjs.com/package/artefaktum)
+
+## Version history
+
+- **0.1.2**: Simplify parameter on Get and Get Many; project picker now
+  defaults to the list ("From List") instead of the `default` slug.
+- **0.1.1**: Repository moved to the artefaktum-dev organisation; first
+  release published with npm provenance.
+- **0.1.0**: Initial release.
 
 ## Development
 

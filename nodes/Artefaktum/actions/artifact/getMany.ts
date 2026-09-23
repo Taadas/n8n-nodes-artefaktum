@@ -1,7 +1,7 @@
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { resolveProjectId } from '../../projects';
 import { apiRequest } from '../../transport';
-import { locator, splitList, type Action } from '../common';
+import { locator, simplifyArtifact, splitList, type Action } from '../common';
 
 const RETURN_ALL_CAP = 1000;
 // Defensive cap on the number of search pages fetched per item: a server that never stops
@@ -10,6 +10,7 @@ const MAX_PAGES = 20;
 
 const getMany: Action = async ({ ctx, itemIndex, projectCache }) => {
 	const projectId = await resolveProjectId(ctx, locator(ctx, itemIndex), projectCache, itemIndex);
+	const simplify = ctx.getNodeParameter('simplify', itemIndex, true) as boolean;
 	const returnAll = ctx.getNodeParameter('returnAll', itemIndex, false) as boolean;
 	const limit = returnAll ? 100 : Math.max(1, Math.min(100, Number(ctx.getNodeParameter('limit', itemIndex, 50))));
 	const f = ctx.getNodeParameter('filters', itemIndex, {}) as IDataObject;
@@ -32,7 +33,9 @@ const getMany: Action = async ({ ctx, itemIndex, projectCache }) => {
 		const page = await apiRequest(ctx, 'POST', '/v1/artifacts/search', { body: cursor ? { ...body, cursor } : body, itemIndex });
 		pageCount++;
 		for (const hit of (page.items as IDataObject[]) ?? []) {
-			out.push({ json: { ...(hit.artifact as IDataObject), score: hit.score, match_mode: hit.match_mode }, pairedItem: { item: itemIndex } });
+			const artifact = hit.artifact as IDataObject;
+			const json = simplify ? simplifyArtifact(artifact) : { ...artifact };
+			out.push({ json: { ...json, score: hit.score, match_mode: hit.match_mode }, pairedItem: { item: itemIndex } });
 			if (!returnAll && out.length >= limit) return out;
 			if (returnAll && out.length >= RETURN_ALL_CAP) return out;
 		}

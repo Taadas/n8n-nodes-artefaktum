@@ -46,11 +46,15 @@ describe('artifact descriptions', () => {
 		expect(getLocator?.displayOptions?.show?.lookup).toEqual(['externalKey']);
 	});
 
-	it('project locator defaults to the default slug', () => {
+	it('project locator defaults to the list picker', () => {
 		const p = projectLocator(['upload']);
 		expect(p.type).toBe('resourceLocator');
-		expect(p.default).toEqual({ mode: 'slug', value: 'default' });
+		expect(p.default).toEqual({ mode: 'list', value: '' });
 		expect((p.modes ?? []).map((m) => m.name)).toEqual(['list', 'slug', 'id']);
+	});
+
+	it('shows Simplify for get and getMany only', () => {
+		expect(shownFor('simplify').sort()).toEqual(['get', 'getMany']);
 	});
 
 	it('every boolean description starts with Whether', () => {
