@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.2 — 2026-09-23
+
+- Added a Simplify parameter to Get and Get Many, on by default, returning a smaller set of stable fields instead of the raw API response.
+- The Project picker now defaults to "From List" instead of the `default` slug.
+- README restructured to follow n8n's community node documentation template.
+
 ## 0.1.1 — 2026-09-23
 
 - Repository moved to the artefaktum-dev organisation; package metadata and provenance now point there.
